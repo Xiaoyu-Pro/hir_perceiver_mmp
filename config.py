@@ -26,6 +26,7 @@ class DataConfig:
     # 通用数据相关配置
     metric_max_t: int = 16
     use_metric_zscore: bool = True
+    use_metric_log1p: bool = False  # 若真实数据 metric 数值跨度特别大，可打开 log1p 再做 z-score
     use_log_log1p: bool = True
     use_trace_log1p: bool = True
     train_val_test_ratio: Tuple[float, float, float] = (0.6, 0.2, 0.2)

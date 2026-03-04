@@ -33,6 +33,7 @@ class MMPDataset(Dataset):
         metric_max_t: int,
         norm_stats: NormalizationStats,
         use_metric_zscore: bool = True,
+        use_metric_log1p: bool = False,
         use_log_log1p: bool = True,
         use_trace_log1p: bool = True,
     ) -> None:
@@ -44,6 +45,7 @@ class MMPDataset(Dataset):
         self.metric_max_t = metric_max_t
         self.norm_stats = norm_stats
         self.use_metric_zscore = use_metric_zscore
+        self.use_metric_log1p = use_metric_log1p
         self.use_log_log1p = use_log_log1p
         self.use_trace_log1p = use_trace_log1p
 
@@ -75,6 +77,9 @@ class MMPDataset(Dataset):
         label = int(self.labels[key])
 
         metric = self._pad_or_truncate_metric(metric)
+
+        if self.use_metric_log1p:
+            metric = np.log1p(np.maximum(metric, 0.0))
 
         if self.use_metric_zscore:
             metric = (metric - self.norm_stats.metric_mean) / self.norm_stats.metric_std
@@ -175,10 +180,13 @@ def _build_labels(label_json: Dict[str, dict]) -> Dict[str, int]:
     return out
 
 
-def _compute_metric_stats(metric_data: Dict[str, np.ndarray], window_ids: Iterable[str]) -> NormalizationStats:
+def _compute_metric_stats(metric_data: Dict[str, np.ndarray], window_ids: Iterable[str], use_metric_log1p: bool) -> NormalizationStats:
     arrays = []
     for win_id in window_ids:
-        arrays.append(metric_data[win_id])
+        arr = metric_data[win_id]
+        if use_metric_log1p:
+            arr = np.log1p(np.maximum(arr, 0.0))
+        arrays.append(arr)
     concat = np.concatenate([a.reshape(-1, a.shape[1]) for a in arrays], axis=0)
     mean = concat.mean(axis=0, keepdims=True)
     std = concat.std(axis=0, keepdims=True)
@@ -320,15 +328,16 @@ def load_datasets_from_dir(data_dir: str, metric_max_t: int, ratios: Tuple[float
 
     train_ids, val_ids, test_ids = _split_ids(inter_ids, labels, ratios, split_seed)
 
-    norm_stats = _compute_metric_stats(metric_data, train_ids)
+    norm_stats = _compute_metric_stats(metric_data, train_ids, data_cfg.use_metric_log1p)
 
     use_metric_zscore = data_cfg.use_metric_zscore
+    use_metric_log1p = data_cfg.use_metric_log1p
     use_log_log1p = data_cfg.use_log_log1p
     use_trace_log1p = data_cfg.use_trace_log1p
 
-    train_ds = MMPDataset(metric_data, log_data, trace_data, labels, train_ids, metric_max_t, norm_stats, use_metric_zscore, use_log_log1p, use_trace_log1p)
-    val_ds = MMPDataset(metric_data, log_data, trace_data, labels, val_ids, metric_max_t, norm_stats, use_metric_zscore, use_log_log1p, use_trace_log1p)
-    test_ds = MMPDataset(metric_data, log_data, trace_data, labels, test_ids, metric_max_t, norm_stats, use_metric_zscore, use_log_log1p, use_trace_log1p)
+    train_ds = MMPDataset(metric_data, log_data, trace_data, labels, train_ids, metric_max_t, norm_stats, use_metric_zscore, use_metric_log1p, use_log_log1p, use_trace_log1p)
+    val_ds = MMPDataset(metric_data, log_data, trace_data, labels, val_ids, metric_max_t, norm_stats, use_metric_zscore, use_metric_log1p, use_log_log1p, use_trace_log1p)
+    test_ds = MMPDataset(metric_data, log_data, trace_data, labels, test_ids, metric_max_t, norm_stats, use_metric_zscore, use_metric_log1p, use_log_log1p, use_trace_log1p)
 
     num_features = train_ds.num_features
 

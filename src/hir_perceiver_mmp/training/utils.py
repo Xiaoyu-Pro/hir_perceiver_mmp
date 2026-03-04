@@ -33,7 +33,7 @@ def save_checkpoint(path: str, model_state: dict, extra: Optional[Dict[str, Any]
 
 
 def load_checkpoint(path: str, map_location: Optional[torch.device] = None) -> dict:
-    return torch.load(path, map_location=map_location)
+    return torch.load(path, map_location=map_location, weights_only=True)
 
 
 def metric_block_mask(metric: torch.Tensor, ratio: float) -> torch.Tensor:

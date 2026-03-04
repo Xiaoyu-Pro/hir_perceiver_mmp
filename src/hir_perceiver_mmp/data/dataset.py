@@ -186,21 +186,71 @@ def _compute_metric_stats(metric_data: Dict[str, np.ndarray], window_ids: Iterab
     return NormalizationStats(metric_mean=mean.astype(np.float32), metric_std=std.astype(np.float32))
 
 
-def _split_ids(all_ids: List[str], ratios: Tuple[float, float, float], seed: int) -> Tuple[List[str], List[str], List[str]]:
+def _split_ids(
+    all_ids: List[str],
+    labels: Dict[str, int],
+    ratios: Tuple[float, float, float],
+    seed: int,
+) -> Tuple[List[str], List[str], List[str]]:
+    """按标签做简单分层划分，尽量保证 train/val/test 都包含一定数量的正样本。"""
+
     ids = list(all_ids)
-    random.Random(seed).shuffle(ids)
-    n = len(ids)
-    n_train = int(n * ratios[0])
-    n_val = int(n * ratios[1])
-    n_train = max(1, n_train)
-    n_val = max(1, n_val)
-    if n_train + n_val >= n:
-        n_val = max(1, n - n_train - 1)
-    train_ids = ids[:n_train]
-    val_ids = ids[n_train : n_train + n_val]
-    test_ids = ids[n_train + n_val :]
-    if not test_ids:
-        test_ids = val_ids
+    rng = random.Random(seed)
+
+    pos_ids = [i for i in ids if labels.get(i, 0) == 1]
+    neg_ids = [i for i in ids if labels.get(i, 0) == 0]
+
+    rng.shuffle(pos_ids)
+    rng.shuffle(neg_ids)
+
+    def _split_group(group_ids: List[str]) -> Tuple[List[str], List[str], List[str]]:
+        n = len(group_ids)
+        if n == 0:
+            return [], [], []
+        if n == 1:
+            return group_ids, [], []
+        if n == 2:
+            return [group_ids[0]], [group_ids[1]], []
+
+        # n >= 3，按比例分配并保证三份都非空
+        n_train = int(n * ratios[0])
+        n_val = int(n * ratios[1])
+        n_test = n - n_train - n_val
+
+        if n_train < 1:
+            n_train = 1
+        if n_val < 1:
+            n_val = 1
+        if n_test < 1:
+            n_test = 1
+
+        total = n_train + n_val + n_test
+        while total > n:
+            # 从样本数最多的那一份减去 1
+            if n_train >= n_val and n_train >= n_test and n_train > 1:
+                n_train -= 1
+            elif n_val >= n_test and n_val > 1:
+                n_val -= 1
+            elif n_test > 1:
+                n_test -= 1
+            total = n_train + n_val + n_test
+
+        train = group_ids[:n_train]
+        val = group_ids[n_train : n_train + n_val]
+        test = group_ids[n_train + n_val : n_train + n_val + n_test]
+        return train, val, test
+
+    pos_train, pos_val, pos_test = _split_group(pos_ids)
+    neg_train, neg_val, neg_test = _split_group(neg_ids)
+
+    train_ids = pos_train + neg_train
+    val_ids = pos_val + neg_val
+    test_ids = pos_test + neg_test
+
+    rng.shuffle(train_ids)
+    rng.shuffle(val_ids)
+    rng.shuffle(test_ids)
+
     return train_ids, val_ids, test_ids
 
 
@@ -222,7 +272,7 @@ def load_datasets_from_dir(data_dir: str, metric_max_t: int, ratios: Tuple[float
     id_sets = [set(metric_data.keys()), set(log_data.keys()), set(trace_data.keys()), set(labels.keys())]
     inter_ids = sorted(set.intersection(*id_sets))
 
-    train_ids, val_ids, test_ids = _split_ids(inter_ids, ratios, split_seed)
+    train_ids, val_ids, test_ids = _split_ids(inter_ids, labels, ratios, split_seed)
 
     norm_stats = _compute_metric_stats(metric_data, train_ids)
 

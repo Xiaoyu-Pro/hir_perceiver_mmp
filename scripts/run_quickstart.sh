@@ -2,7 +2,7 @@
 
 # 一键示例运行脚本：生成样例数据 -> 预训练 -> 微调，并将关键日志写入 outputs/smoke_run.log
 
-set -euo pipefail
+set -euo
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"

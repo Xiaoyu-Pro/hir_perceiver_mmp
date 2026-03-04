@@ -2,7 +2,7 @@
 
 # 小工具：将仓库内所有 .sh 脚本的行尾统一为 LF，修复 Windows 上传导致的 CRLF 问题
 
-set -euo pipefail
+set -euo
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"

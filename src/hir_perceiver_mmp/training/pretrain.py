@@ -22,6 +22,10 @@ def train_epoch(model, loader, device, optimizer, cfg):
     model.train()
     mse_loss = torch.nn.MSELoss()
     total_loss = 0.0
+    total_metric = 0.0
+    total_log = 0.0
+    total_trace = 0.0
+    n_samples = 0
     for batch in tqdm(loader, desc="[Pretrain] Epoch", leave=False):
         metric, log_vec, trace_vec, labels, keys = batch  # noqa: F841
         metric = metric.to(device)
@@ -47,7 +51,13 @@ def train_epoch(model, loader, device, optimizer, cfg):
         trace_loss2 = mse_loss(trace_rec2, trace_flat)
         L_rec2 = cfg.pretrain.lambda_metric * metric_loss2 + cfg.pretrain.lambda_log * log_loss2 + cfg.pretrain.lambda_trace * trace_loss2
 
-        rec_loss = 0.5 * (L_rec1 + L_rec2)
+        # 按照两视图平均后的三项重建损失（已乘 lambda）做统计，方便诊断哪一块贡献最大
+        batch_size = metric.size(0)
+        metric_rec_batch = 0.5 * cfg.pretrain.lambda_metric * (metric_loss1 + metric_loss2)
+        log_rec_batch = 0.5 * cfg.pretrain.lambda_log * (log_loss1 + log_loss2)
+        trace_rec_batch = 0.5 * cfg.pretrain.lambda_trace * (trace_loss1 + trace_loss2)
+
+        rec_loss = metric_rec_batch + log_rec_batch + trace_rec_batch
 
         cos_sim = torch.nn.functional.cosine_similarity(z1, z2, dim=1).mean()
         cons_loss = 1.0 - cos_sim
@@ -58,8 +68,17 @@ def train_epoch(model, loader, device, optimizer, cfg):
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item() * metric.size(0)
-    return total_loss / len(loader.dataset)
+        total_loss += loss.item() * batch_size
+        total_metric += metric_rec_batch.item() * batch_size
+        total_log += log_rec_batch.item() * batch_size
+        total_trace += trace_rec_batch.item() * batch_size
+        n_samples += batch_size
+
+    avg_total = total_loss / n_samples
+    avg_metric = total_metric / n_samples
+    avg_log = total_log / n_samples
+    avg_trace = total_trace / n_samples
+    return avg_total, avg_metric, avg_log, avg_trace
 
 
 def main():
@@ -95,8 +114,16 @@ def main():
     ensure_dir(cfg.training.outputs_dir)
 
     for epoch in range(1, cfg.pretrain.epochs + 1):
-        avg_loss = train_epoch(model, train_loader, device, optimizer, cfg)
-        print(f"[Pretrain] Epoch {epoch} average loss: {avg_loss:.6f}")
+        avg_loss, avg_metric, avg_log, avg_trace = train_epoch(model, train_loader, device, optimizer, cfg)
+        print(
+            "[Pretrain] Epoch {epoch} | total: {tot:.6f} metric_rec: {m:.6f} log_rec: {l:.6f} trace_rec: {t:.6f}".format(
+                epoch=epoch,
+                tot=avg_loss,
+                m=avg_metric,
+                l=avg_log,
+                t=avg_trace,
+            )
+        )
 
     ckpt_path = cfg.training.pretrain_checkpoint
     save_checkpoint(ckpt_path, model.state_dict(), extra={"feature_dims": feature_dims})

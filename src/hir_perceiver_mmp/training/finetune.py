@@ -12,9 +12,8 @@ from src.hir_perceiver_mmp.training.metrics import evaluate_predictions
 from src.hir_perceiver_mmp.training.utils import ensure_dir, get_device, load_checkpoint, set_seed
 
 
-def train_one_epoch(model, loader, device, optimizer):
+def train_one_epoch(model, loader, device, optimizer, criterion):
     model.train()
-    criterion = torch.nn.BCEWithLogitsLoss()
     total_loss = 0.0
     for metric, log_vec, trace_vec, labels, keys in tqdm(loader, desc="[Finetune] Epoch", leave=False):  # noqa: F841
         metric = metric.to(device)
@@ -109,6 +108,19 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.finetune.lr)
 
+    # 根据训练集标签分布自动设置正负样本的 pos_weight，以缓解类别不平衡
+    train_labels = np.array([train_ds.labels[k] for k in train_ds.window_ids], dtype=np.int64)
+    num_pos = int(train_labels.sum())
+    num_neg = int(len(train_labels) - num_pos)
+    if num_pos > 0 and num_neg > 0:
+        pos_weight_value = num_neg / max(1, num_pos)
+        pos_weight = torch.tensor(pos_weight_value, dtype=torch.float32, device=device)
+        print(f"[Finetune] Train labels: pos={num_pos} neg={num_neg} pos_weight={pos_weight_value:.4f}")
+        criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    else:
+        print("[Finetune] Warning: train set has only one class, fallback to unweighted BCE.")
+        criterion = torch.nn.BCEWithLogitsLoss()
+
     ensure_dir(cfg.training.outputs_dir)
 
     best_val_f1 = -1.0
@@ -116,7 +128,7 @@ def main():
     best_threshold = 0.5
 
     for epoch in range(1, cfg.finetune.epochs + 1):
-        avg_loss = train_one_epoch(model, train_loader, device, optimizer)
+        avg_loss = train_one_epoch(model, train_loader, device, optimizer, criterion)
         print(f"[Finetune] Epoch {epoch} train loss: {avg_loss:.6f}")
 
         # 验证集评估

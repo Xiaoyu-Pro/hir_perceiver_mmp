@@ -55,7 +55,7 @@ class ReasonerConfig:
 
 @dataclass
 class PretrainConfig:
-    epochs: int = 1
+    epochs: int = 1  # 示例/quickstart 默认 1，可在真实实验中调大
     batch_size: int = 8
     lr: float = 1e-3
     lambda_metric: float = 1.0
@@ -69,7 +69,7 @@ class PretrainConfig:
 
 @dataclass
 class FinetuneConfig:
-    epochs: int = 1
+    epochs: int = 5  # 默认多跑几轮，真实实验可进一步调大
     batch_size: int = 8
     lr: float = 1e-3
 

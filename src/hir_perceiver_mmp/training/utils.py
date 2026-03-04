@@ -1,7 +1,7 @@
 import math
 import os
 import random
-from typing import Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -25,14 +25,14 @@ def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def save_checkpoint(path: str, model_state: dict, extra: dict | None = None) -> None:
+def save_checkpoint(path: str, model_state: dict, extra: Optional[Dict[str, Any]] = None) -> None:
     ckpt = {"model": model_state}
     if extra is not None:
         ckpt.update(extra)
     torch.save(ckpt, path)
 
 
-def load_checkpoint(path: str, map_location: torch.device | None = None) -> dict:
+def load_checkpoint(path: str, map_location: Optional[torch.device] = None) -> dict:
     return torch.load(path, map_location=map_location)
 
 

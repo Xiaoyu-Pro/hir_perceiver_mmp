@@ -1,0 +1,9 @@
+[Quickstart] 生成示例数据...
+示例数据已生成到: data/sample_run
+[Quickstart] 预训练（C3-MMP）...
+[Pretrain] Epoch 1 average loss: 3.203633
+预训练完成，checkpoint 保存在: outputs/pretrain_checkpoint.pth
+[Quickstart] 微调并评估...
+[Finetune] Epoch 1 train loss: 0.651071
+[Finetune] Epoch 1 VAL | ROC-AUC: 1.0000 PR-AUC: 1.0000 best_threshold: 0.1650 Precision: 1.0000 Recall: 1.0000 F1: 1.0000
+[Finetune] TEST (threshold from best VAL epoch=1) | ROC-AUC: nan PR-AUC: 0.0000 threshold: 0.1650 Precision: 0.0000 Recall: 0.0000 F1: 0.0000

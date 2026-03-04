@@ -4,7 +4,26 @@ from typing import Tuple
 
 @dataclass
 class DataConfig:
-    data_dir: str = "data/sample_run"  # 相对于仓库根目录
+    # 数据来源模式："sample" 使用 data_dir 下的示例数据；"real" 使用真实数据路径组件拼接
+    mode: str = "sample"  # "sample" 或 "real"
+
+    # 示例数据目录（相对于仓库根目录），用于 quickstart/demo
+    data_dir: str = "data/sample_run"
+
+    # 真实数据根目录与子路径组件（在 mode="real" 时生效）
+    real_root_dir: str = "/home/admin/projects/MultiFusion/code"
+    dataset_name: str = "dataA"
+    time_range: str = "2days"
+    window_type: str = "10s_5s"
+    service_name: str = "mobservice1"
+
+    # 真实数据文件名（在 mode="real" 时生效）
+    metric_filename: str = "processed_metric.json"
+    log_filename: str = "processed_log.json"
+    trace_filename: str = "processed_trace.json"
+    label_filename: str = "processed_label.json"
+
+    # 通用数据相关配置
     metric_max_t: int = 16
     use_metric_zscore: bool = True
     use_log_log1p: bool = True

@@ -255,12 +255,58 @@ def _split_ids(
 
 
 def load_datasets_from_dir(data_dir: str, metric_max_t: int, ratios: Tuple[float, float, float], split_seed: int):
-    """从目录中加载对齐后的 train/val/test 数据集及维度信息。"""
+    """从目录中加载对齐后的 train/val/test 数据集及维度信息。
 
-    metric_json = _load_json(os.path.join(data_dir, "metric.json"))
-    log_json = _load_json(os.path.join(data_dir, "log.json"))
-    trace_json = _load_json(os.path.join(data_dir, "trace.json"))
-    label_json = _load_json(os.path.join(data_dir, "label.json"))
+    data_dir 参数用于示例数据模式（cfg.data.mode="sample"），真实数据模式下会根据
+    cfg.data.real_root_dir + dataset_name + time_range + window_type + service_name 重新拼接。
+    """
+
+    cfg = get_default_config()
+    data_cfg = cfg.data
+
+    if data_cfg.mode == "real":
+        # 根据真实数据配置拼接最终目录
+        base_dir = data_cfg.real_root_dir
+        final_dir = os.path.join(
+            base_dir,
+            data_cfg.dataset_name,
+            data_cfg.time_range,
+            data_cfg.window_type,
+            data_cfg.service_name,
+        )
+        metric_file = data_cfg.metric_filename
+        log_file = data_cfg.log_filename
+        trace_file = data_cfg.trace_filename
+        label_file = data_cfg.label_filename
+    else:
+        # 示例数据模式，沿用原有相对目录和默认文件名
+        final_dir = data_dir
+        metric_file = "metric.json"
+        log_file = "log.json"
+        trace_file = "trace.json"
+        label_file = "label.json"
+
+    print(
+        "[DataConfig] mode={mode}, base_dir={base}, dataset={dataset}, time_range={tr}, window_type={wt}, "
+        "service={svc}, data_dir={dd}, metric_file={mf}, log_file={lf}, trace_file={tf}, label_file={lab}".format(
+            mode=data_cfg.mode,
+            base=data_cfg.real_root_dir,
+            dataset=data_cfg.dataset_name,
+            tr=data_cfg.time_range,
+            wt=data_cfg.window_type,
+            svc=data_cfg.service_name,
+            dd=final_dir,
+            mf=metric_file,
+            lf=log_file,
+            tf=trace_file,
+            lab=label_file,
+        )
+    )
+
+    metric_json = _load_json(os.path.join(final_dir, metric_file))
+    log_json = _load_json(os.path.join(final_dir, log_file))
+    trace_json = _load_json(os.path.join(final_dir, trace_file))
+    label_json = _load_json(os.path.join(final_dir, label_file))
 
     metric_keys = _infer_metric_keys(metric_json)
     metric_data = _build_metric_arrays(metric_json, metric_keys)
@@ -276,10 +322,9 @@ def load_datasets_from_dir(data_dir: str, metric_max_t: int, ratios: Tuple[float
 
     norm_stats = _compute_metric_stats(metric_data, train_ids)
 
-    cfg = get_default_config()
-    use_metric_zscore = cfg.data.use_metric_zscore
-    use_log_log1p = cfg.data.use_log_log1p
-    use_trace_log1p = cfg.data.use_trace_log1p
+    use_metric_zscore = data_cfg.use_metric_zscore
+    use_log_log1p = data_cfg.use_log_log1p
+    use_trace_log1p = data_cfg.use_trace_log1p
 
     train_ds = MMPDataset(metric_data, log_data, trace_data, labels, train_ids, metric_max_t, norm_stats, use_metric_zscore, use_log_log1p, use_trace_log1p)
     val_ds = MMPDataset(metric_data, log_data, trace_data, labels, val_ids, metric_max_t, norm_stats, use_metric_zscore, use_log_log1p, use_trace_log1p)

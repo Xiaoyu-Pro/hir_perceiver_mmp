@@ -136,7 +136,7 @@ def main():
         val_metrics = evaluate_predictions(val_labels, val_probs, fixed_threshold=None)
         print(
             "[Finetune] Epoch {epoch} VAL | ROC-AUC: {roc:.4f} PR-AUC: {pr:.4f} best_threshold: {thr:.4f} "
-            "Precision: {p:.4f} Recall: {r:.4f} F1: {f1:.4f}".format(
+            "Precision: {p:.4f} Recall: {r:.4f} F1: {f1:.4f} TP: {tp} FP: {fp} TN: {tn} FN: {fn}".format(
                 epoch=epoch,
                 roc=val_metrics["roc_auc"],
                 pr=val_metrics["pr_auc"],
@@ -144,6 +144,10 @@ def main():
                 p=val_metrics["precision"],
                 r=val_metrics["recall"],
                 f1=val_metrics["f1"],
+                tp=int(val_metrics["tp"]),
+                fp=int(val_metrics["fp"]),
+                tn=int(val_metrics["tn"]),
+                fn=int(val_metrics["fn"]),
             )
         )
 
@@ -158,7 +162,7 @@ def main():
 
     print(
         "[Finetune] TEST (threshold from best VAL epoch={epoch}) | ROC-AUC: {roc:.4f} PR-AUC: {pr:.4f} "
-        "threshold: {thr:.4f} Precision: {p:.4f} Recall: {r:.4f} F1: {f1:.4f}".format(
+        "threshold: {thr:.4f} Precision: {p:.4f} Recall: {r:.4f} F1: {f1:.4f} TP: {tp} FP: {fp} TN: {tn} FN: {fn}".format(
             epoch=best_epoch,
             roc=test_metrics["roc_auc"],
             pr=test_metrics["pr_auc"],
@@ -166,6 +170,10 @@ def main():
             p=test_metrics["precision"],
             r=test_metrics["recall"],
             f1=test_metrics["f1"],
+            tp=int(test_metrics["tp"]),
+            fp=int(test_metrics["fp"]),
+            tn=int(test_metrics["tn"]),
+            fn=int(test_metrics["fn"]),
         )
     )
 

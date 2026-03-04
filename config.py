@@ -31,6 +31,7 @@ class DataConfig:
     use_trace_log1p: bool = True
     train_val_test_ratio: Tuple[float, float, float] = (0.6, 0.2, 0.2)
     split_seed: int = 42
+    share_val_and_test: bool = False  # 如需让验证集和测试集使用相同窗口，置为 True
 
 
 @dataclass

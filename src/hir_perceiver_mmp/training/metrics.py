@@ -24,11 +24,16 @@ def find_best_threshold(y_true: np.ndarray, y_score: np.ndarray, num_thresholds:
     best_thr = 0.5
     best_p = 0.0
     best_r = 0.0
+    best_tp = 0.0
+    best_fp = 0.0
+    best_tn = 0.0
+    best_fn = 0.0
     for thr in thresholds:
         y_pred = (y_score >= thr).astype(int)
         tp = float(((y_pred == 1) & (y_true == 1)).sum())
         fp = float(((y_pred == 1) & (y_true == 0)).sum())
         fn = float(((y_pred == 0) & (y_true == 1)).sum())
+        tn = float(((y_pred == 0) & (y_true == 0)).sum())
         if tp + fp == 0:
             precision = 0.0
         else:
@@ -46,11 +51,19 @@ def find_best_threshold(y_true: np.ndarray, y_score: np.ndarray, num_thresholds:
             best_thr = float(thr)
             best_p = precision
             best_r = recall
+            best_tp = tp
+            best_fp = fp
+            best_tn = tn
+            best_fn = fn
     return {
         "best_threshold": best_thr,
         "precision": best_p,
         "recall": best_r,
         "f1": best_f1,
+        "tp": best_tp,
+        "fp": best_fp,
+        "tn": best_tn,
+        "fn": best_fn,
     }
 
 
@@ -64,13 +77,18 @@ def evaluate_predictions(y_true: np.ndarray, y_score: np.ndarray, fixed_threshol
         precision = thr_stats["precision"]
         recall = thr_stats["recall"]
         f1 = thr_stats["f1"]
+        tp = thr_stats["tp"]
+        fp = thr_stats["fp"]
+        tn = thr_stats["tn"]
+        fn = thr_stats["fn"]
     else:
-        thr_stats = find_best_threshold(y_true, y_score, num_thresholds=1)
+        # 使用给定阈值计算混淆矩阵及指标
         threshold = fixed_threshold
         y_pred = (y_score >= threshold).astype(int)
         tp = float(((y_pred == 1) & (y_true == 1)).sum())
         fp = float(((y_pred == 1) & (y_true == 0)).sum())
         fn = float(((y_pred == 0) & (y_true == 1)).sum())
+        tn = float(((y_pred == 0) & (y_true == 0)).sum())
         if tp + fp == 0:
             precision = 0.0
         else:
@@ -91,4 +109,8 @@ def evaluate_predictions(y_true: np.ndarray, y_score: np.ndarray, fixed_threshol
         "precision": precision,
         "recall": recall,
         "f1": f1,
+        "tp": tp,
+        "fp": fp,
+        "tn": tn,
+        "fn": fn,
     }

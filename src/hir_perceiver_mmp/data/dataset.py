@@ -328,7 +328,25 @@ def load_datasets_from_dir(data_dir: str, metric_max_t: int, ratios: Tuple[float
 
     train_ids, val_ids, test_ids = _split_ids(inter_ids, labels, ratios, split_seed)
 
+    if data_cfg.share_val_and_test:
+        test_ids = list(val_ids)
+        print("[DataSplit] share_val_and_test=True, TEST 将与 VAL 使用相同的窗口集合")
+
     norm_stats = _compute_metric_stats(metric_data, train_ids, data_cfg.use_metric_log1p)
+
+    def _stats(name: str, ids: List[str]) -> None:
+        n = len(ids)
+        pos = sum(labels[i] == 1 for i in ids)
+        neg = n - pos
+        print(f"[DataSplit] {name}: windows={n} pos={pos} neg={neg}")
+
+    total_windows = len(inter_ids)
+    total_pos = sum(labels[i] == 1 for i in inter_ids)
+    total_neg = total_windows - total_pos
+    print(f"[DataStats] total_windows={total_windows} pos={total_pos} neg={total_neg}")
+    _stats("TRAIN", train_ids)
+    _stats("VAL", val_ids)
+    _stats("TEST", test_ids)
 
     use_metric_zscore = data_cfg.use_metric_zscore
     use_metric_log1p = data_cfg.use_metric_log1p
